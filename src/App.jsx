@@ -1,21 +1,33 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@emotion/react";
-import theme from "./theme";
+import { ThemeContextProvider } from "./context/ThemeContext";
+import { PoolStatsProvider } from "./context/PoolStatsContext";
 import Dashboard from "./pages/Dashboard";
-import { CssBaseline } from "@mui/material";
 import Header from "./components/layout/Header";
+import PasswordGate from "./components/PasswordGate";
+import { Box } from "@mui/material";
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Header />
-      <Router>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+    <ThemeContextProvider>
+      <PasswordGate>
+        <PoolStatsProvider>
+          <Box
+            sx={{
+              minHeight: "100dvh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Header />
+            <Router basename={import.meta.env.BASE_URL}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+              </Routes>
+            </Router>
+          </Box>
+        </PoolStatsProvider>
+      </PasswordGate>
+    </ThemeContextProvider>
   );
 }
 

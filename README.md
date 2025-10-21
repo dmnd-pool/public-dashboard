@@ -15,7 +15,13 @@ A dashboard for sharing DMND public data.
     npm install
     ```
 
-3. **Start the development server:**
+3. **Configure the dashboard password:**
+    ```bash
+    cp .env.example .env
+    ```
+    Then replace the example value in `.env` with your password.
+
+4. **Start the development server:**
     ```bash
     npm run dev
     ```

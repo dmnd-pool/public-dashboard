@@ -3,13 +3,16 @@ import { Box } from "@mui/material";
 const GridLayout = ({ children }) => (
   <Box
     sx={{
-      display: "grid",
-      gridTemplateColumns: "repeat(15, 1fr)",
-      gridTemplateRows: "repeat(6, auto)",
-      gap: 2,
-      padding: "5%",
+      display: "flex",
+      flexDirection: "column",
+      flex: 1,
+      width: "100%",
+      maxWidth: 1600,
+      mx: "auto",
+      gap: 3,
+      px: { xs: 3, sm: 6, md: 10, lg: 16 },
       pt: 0,
-      minHeight: "100vh",
+      pb: { xs: 4, md: 3 },
     }}
   >
     {children}

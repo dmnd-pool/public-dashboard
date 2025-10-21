@@ -1,256 +1,469 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import Card from "@mui/material/Card";
-import { LineChart } from "@mui/x-charts/LineChart";
-import {
-  Typography,
-  Box,
-  FormControlLabel,
-  Switch,
-  Slider,
-} from "@mui/material";
+import { Box, ButtonBase, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { chartData } from "../utils/mock_data";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  ReferenceLine,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { usePoolStats } from "../hooks/usePoolStats";
+import { formatHashrate } from "../utils/utils";
+
+const FIVE_MINUTES = 5 * 60 * 1000;
+const HASHRATE_COLOR = "#2b7fff";
+const REJECTION_COLOR = "#e67c2a";
+const CHART_HISTORY_KEY = "dmnd-pool-performance-history";
+
+const readChartHistory = () => {
+  try {
+    const history = JSON.parse(
+      window.sessionStorage.getItem(CHART_HISTORY_KEY) || "[]",
+    );
+    if (!Array.isArray(history)) return [];
+
+    return history
+      .filter(
+        (point) =>
+          Number.isFinite(point?.timestamp) &&
+          Number.isFinite(point?.total_hashrate) &&
+          Number.isFinite(point?.rejection_rate),
+      )
+      .slice(-60);
+  } catch {
+    return [];
+  }
+};
+
+const createDataPoint = (stats) => ({
+  total_hashrate: Number(stats.total_hashrate) || 0,
+  rejection_rate: Number(stats.rejection_rate) || 0,
+  timestamp: Date.now(),
+});
+
+const pickTicks = (points) => {
+  if (points.length <= 5) return points.map((point) => point.timestamp);
+  const last = points.length - 1;
+  return Array.from(
+    { length: 5 },
+    (_, index) => points[Math.round((index * last) / 4)].timestamp,
+  );
+};
+
+const getHashrateScale = (value) => {
+  const scales = [
+    { divisor: 1e12, unit: "TH/s" },
+    { divisor: 1e9, unit: "GH/s" },
+    { divisor: 1e6, unit: "MH/s" },
+    { divisor: 1e3, unit: "kH/s" },
+  ];
+  return (
+    scales.find((scale) => value >= scale.divisor) ?? {
+      divisor: 1,
+      unit: "H/s",
+    }
+  );
+};
 
 const Charts = () => {
   const theme = useTheme();
-  const [data, setData] = useState([]);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [showusers, setShowusers] = useState(true);
-  const [showworkers, setShowworkers] = useState(true);
-  const containerRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [data, setData] = useState(readChartHistory);
+  const [showHashrate, setShowHashrate] = useState(true);
+  const [showRejectionRate, setShowRejectionRate] = useState(true);
+  const { poolStats, loading, error } = usePoolStats();
 
-  // Load chart data
   useEffect(() => {
-    // TODO: Replace with API call when available
-    //
-    // Assumed API response format:
-    // {
-    //   "data": [
-    //     {
-    //       "date": "2025-10-09T08:00:00Z",
-    //       "users": 42,
-    //       "workers": 138
-    //     },
-    //     {
-    //       "date": "2025-10-09T09:00:00Z",
-    //       "users": 45,
-    //       "workers": 142
-    //     }
-    //   ]
-    // }
-
-    // For now, using mock data
-    setData(chartData.map((item) => ({ ...item, date: new Date(item.date) })));
-  }, []);
-
-  // Handle resize
-  // Without this, the chart may not resize correctly when the window size changes
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries[0]) {
-        const { width, height } = entries[0].contentRect;
-        setDimensions({ width, height });
+    if (!poolStats) return;
+    setData((previous) => {
+      const next = [...previous.slice(-59), createDataPoint(poolStats)];
+      try {
+        window.sessionStorage.setItem(CHART_HISTORY_KEY, JSON.stringify(next));
+      } catch {
+        // The chart still works when browser storage is unavailable.
       }
+      return next;
     });
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    return () => resizeObserver.disconnect();
-  }, []);
+  }, [poolStats]);
 
-  // Chart config
-  const xAxis = [
-    {
-      dataKey: "date",
-      scaleType: "time",
-      valueFormatter: (date) =>
-        date.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }),
-      disableLine: true,
-    },
-  ];
+  const peakHashrate = Math.max(
+    ...data.map((point) => point.total_hashrate),
+    0,
+  );
+  const scale = getHashrateScale(peakHashrate);
+  const ticks = pickTicks(data);
+  const firstTimestamp = data[0]?.timestamp ?? Date.now();
+  const lastTimestamp = data.at(-1)?.timestamp ?? firstTimestamp;
+  const singlePoint = firstTimestamp === lastTimestamp;
+  const xDomain = singlePoint
+    ? [firstTimestamp - FIVE_MINUTES, lastTimestamp + FIVE_MINUTES]
+    : [firstTimestamp, lastTimestamp];
+  const latest = data.at(-1);
+  const gridColor = theme.palette.mode === "dark" ? "#1f2937" : "#e5e7eb";
+  const tickColor = theme.palette.text.secondary;
+  const tooltipBackground =
+    theme.palette.mode === "dark" ? "#f5f5f5" : "#0a0a0a";
+  const tooltipText = theme.palette.mode === "dark" ? "#262626" : "#e5e5e5";
 
-  const yAxis = [
-    {
-      valueFormatter: (value) => `${value}`,
-      disableLine: true,
-    },
-  ];
+  const formatTime = (timestamp) =>
+    new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-  const series = [
-    ...(showusers
-      ? [
-          {
-            dataKey: "users",
-            showMark: false,
-            color: theme.palette.primary.main,
-            valueFormatter: (value) => `${value}`,
-          },
-        ]
-      : []),
-    ...(showworkers
-      ? [
-          {
-            dataKey: "workers",
-            showMark: false,
-            color: theme.palette.text.secondary,
-            valueFormatter: (value) => `${value}`,
-          },
-        ]
-      : []),
-  ];
-
-  // Get visible data window (12 hours worth)
-  const hoursToShow = 12;
-  const maxScroll = Math.max(0, data.length - hoursToShow);
-
-  // Initialize scroll position to show latest data
-  useEffect(() => {
-    if (data.length > 0 && scrollPosition === 0) {
-      setScrollPosition(maxScroll);
-    }
-  }, [data.length, maxScroll, scrollPosition]);
-
-  const startIndex = Math.floor(scrollPosition);
-  const visibleData = data.slice(startIndex, startIndex + hoursToShow);
+  const metricButton = (label, value, color, enabled, onClick) => (
+    <ButtonBase
+      onClick={onClick}
+      aria-pressed={enabled}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        borderRadius: 1,
+        p: 0.5,
+        opacity: enabled ? 1 : 0.4,
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{ width: 12, height: 12, borderRadius: "2px", bgcolor: color }}
+        />
+        <Typography variant="caption" color="text.secondary">
+          {label}
+        </Typography>
+      </Box>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ fontWeight: 500 }}
+      >
+        {value}
+      </Typography>
+    </ButtonBase>
+  );
 
   return (
-    <>
-      <Card sx={theme.custom.charts.chartCard}>
+    <Card sx={theme.custom.charts.chartCard}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          p: { xs: 4, lg: 5 },
+        }}
+      >
         <Box
           sx={{
-            padding: 2,
-            height: "100%",
             display: "flex",
-            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
           }}
         >
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 2,
-            }}
-          >
-            <Typography
-              variant="h6"
-              component="h2"
-              sx={{
-                fontWeight: 600,
-                color: "text.primary",
-                textAlign: "center",
-              }}
-            >
-              Users and Machines
+          <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
+            Pool performance
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={theme.custom.charts.liveIndicator} />
+            <Typography variant="caption" color="text.secondary">
+              Live
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box sx={theme.custom.charts.liveIndicator} />
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontSize: "0.7rem" }}
-              >
-                Live
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* Toggle switches for chart series */}
-          <Box
-            sx={{
-              display: "flex",
-              gap: 2,
-              mb: 3,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={showusers}
-                  onChange={(e) => setShowusers(e.target.checked)}
-                  size="small"
-                  className="chart-primary"
-                />
-              }
-              label={
-                <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                  Users
-                </Typography>
-              }
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={showworkers}
-                  onChange={(e) => setShowworkers(e.target.checked)}
-                  size="small"
-                  className="chart-secondary"
-                />
-              }
-              label={
-                <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                  Workers
-                </Typography>
-              }
-            />
-          </Box>
-          <Box
-            ref={containerRef}
-            sx={{
-              flexGrow: 1,
-              width: "100%",
-              minHeight: 0,
-              overflow: "hidden",
-            }}
-          >
-            <LineChart
-              dataset={visibleData}
-              xAxis={xAxis}
-              yAxis={yAxis}
-              series={series}
-              width={dimensions.width || 600}
-              height={Math.max(dimensions.height - 40, 320)}
-              margin={{ left: 5, right: 20, top: 20, bottom: 5 }}
-              grid={{ vertical: false, horizontal: true }}
-              slotProps={{
-                legend: {
-                  direction: "row",
-                  position: { vertical: "top", horizontal: "right" },
-                },
-              }}
-            />
-          </Box>
-
-          {/* Time Navigator */}
-          <Box
-            sx={{
-              px: 2,
-              pb: 2,
-              width: "50%",
-              justifyContent: "center",
-              alignSelf: "center",
-            }}
-          >
-            <Slider
-              variant="chart"
-              value={scrollPosition}
-              onChange={(_, newValue) => setScrollPosition(newValue)}
-              min={0}
-              max={maxScroll}
-              step={1}
-              marks={[{ value: maxScroll, label: "Now" }]}
-            />
           </Box>
         </Box>
-      </Card>
-    </>
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: { xs: 2, sm: 6 },
+            flexWrap: "wrap",
+          }}
+        >
+          {metricButton(
+            "Hashrate",
+            formatHashrate(latest?.total_hashrate || 0),
+            HASHRATE_COLOR,
+            showHashrate,
+            () => setShowHashrate((visible) => !visible),
+          )}
+          {metricButton(
+            "Rejection rate",
+            `${(latest?.rejection_rate || 0).toFixed(2)}%`,
+            REJECTION_COLOR,
+            showRejectionRate,
+            () => setShowRejectionRate((visible) => !visible),
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {scale.unit}
+          </Typography>
+          <Box
+            sx={{
+              width: "100%",
+              minWidth: 0,
+              height: 220,
+            }}
+          >
+            {data.length === 0 ? (
+              <Box
+                sx={{
+                  height: "100%",
+                  display: "grid",
+                  placeItems: "center",
+                  color: "text.secondary",
+                }}
+              >
+                <Typography variant="body2">
+                  {loading
+                    ? "Loading chart data…"
+                    : error
+                      ? "Unable to load chart data."
+                      : "No chart data available."}
+                </Typography>
+              </Box>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={data}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="hashrate-fill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor={HASHRATE_COLOR}
+                        stopOpacity={0.1}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={HASHRATE_COLOR}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                    <linearGradient
+                      id="rejection-fill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor={REJECTION_COLOR}
+                        stopOpacity={0.1}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={REJECTION_COLOR}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    vertical={false}
+                    syncWithTicks
+                    stroke={gridColor}
+                    strokeWidth={0.5}
+                  />
+                  <XAxis
+                    dataKey="timestamp"
+                    type="number"
+                    scale="time"
+                    domain={xDomain}
+                    ticks={ticks}
+                    interval={0}
+                    tickFormatter={formatTime}
+                    axisLine={{ stroke: theme.palette.divider, strokeWidth: 1 }}
+                    tickLine={false}
+                    tick={{ fill: tickColor, fontSize: 12 }}
+                    tickMargin={8}
+                  />
+                  {showHashrate && (
+                    <YAxis
+                      yAxisId="hashrate"
+                      tickFormatter={(value) =>
+                        (value / scale.divisor).toFixed(1)
+                      }
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: tickColor, fontSize: 12 }}
+                      width={46}
+                      tickMargin={16}
+                      domain={[0, "auto"]}
+                    />
+                  )}
+                  {showRejectionRate && (
+                    <YAxis
+                      yAxisId="rejection"
+                      orientation="right"
+                      tickFormatter={(value) => `${value}%`}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: tickColor, fontSize: 12 }}
+                      width={46}
+                      tickMargin={16}
+                      domain={[0, "auto"]}
+                    />
+                  )}
+                  <Tooltip
+                    cursor={{
+                      stroke: HASHRATE_COLOR,
+                      strokeWidth: 1,
+                      strokeDasharray: "4 4",
+                    }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <Box
+                          sx={{
+                            bgcolor: tooltipBackground,
+                            color: tooltipText,
+                            borderRadius: 3,
+                            px: 4,
+                            py: 3,
+                            boxShadow: 8,
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ opacity: 0.75 }}>
+                            {formatTime(label)}
+                          </Typography>
+                          {payload.map((entry) => (
+                            <Box
+                              key={entry.dataKey}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 4,
+                                mt: 0.5,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: "2px",
+                                    bgcolor: entry.color,
+                                  }}
+                                />
+                                <Typography variant="body2">
+                                  {entry.name}
+                                </Typography>
+                              </Box>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600 }}
+                              >
+                                {entry.dataKey === "total_hashrate"
+                                  ? formatHashrate(Number(entry.value))
+                                  : `${Number(entry.value).toFixed(2)}%`}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      );
+                    }}
+                  />
+                  {singlePoint && showHashrate && latest && (
+                    <ReferenceLine
+                      yAxisId="hashrate"
+                      y={latest.total_hashrate}
+                      stroke={HASHRATE_COLOR}
+                      strokeWidth={4}
+                      ifOverflow="extendDomain"
+                    />
+                  )}
+                  {singlePoint && showRejectionRate && latest && (
+                    <ReferenceLine
+                      yAxisId="rejection"
+                      y={latest.rejection_rate}
+                      stroke={REJECTION_COLOR}
+                      strokeWidth={4}
+                      ifOverflow="extendDomain"
+                    />
+                  )}
+                  {showHashrate && (
+                    <Area
+                      yAxisId="hashrate"
+                      type="monotone"
+                      dataKey="total_hashrate"
+                      name="Hashrate"
+                      stroke={HASHRATE_COLOR}
+                      strokeWidth={4}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="url(#hashrate-fill)"
+                      dot={
+                        singlePoint
+                          ? { r: 5, fill: HASHRATE_COLOR, strokeWidth: 0 }
+                          : false
+                      }
+                      activeDot={{
+                        r: 10,
+                        fill: HASHRATE_COLOR,
+                        stroke: "#fff",
+                        strokeWidth: 4,
+                      }}
+                    />
+                  )}
+                  {showRejectionRate && (
+                    <Area
+                      yAxisId="rejection"
+                      type="monotone"
+                      dataKey="rejection_rate"
+                      name="Rejection rate"
+                      stroke={REJECTION_COLOR}
+                      strokeWidth={4}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="url(#rejection-fill)"
+                      dot={
+                        singlePoint
+                          ? { r: 4, fill: REJECTION_COLOR, strokeWidth: 0 }
+                          : false
+                      }
+                      activeDot={{
+                        r: 10,
+                        fill: REJECTION_COLOR,
+                        stroke: "#fff",
+                        strokeWidth: 4,
+                      }}
+                    />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    </Card>
   );
 };
 

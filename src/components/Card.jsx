@@ -10,6 +10,7 @@ const Card = ({
   gridColumn,
   title,
   value,
+  description,
   icon: Icon,
   iconColor = "primary",
   variant = "block", // | "stats" | "block"
@@ -22,21 +23,23 @@ const Card = ({
   const variantStyles = {
     stat: {
       backgroundColor: "background.paper",
-      boxShadow: 4,
-      padding: 2,
-      border: "1px solid #000",
-      borderRadius: 2,
+      boxShadow:
+        theme.palette.mode === "dark"
+          ? "0 16px 40px rgba(0,0,0,0.25)"
+          : "0 16px 40px rgba(15,23,42,0.07)",
+      border: "1px solid",
+      borderColor: "divider",
+      borderRadius: 3,
       minHeight: {
-        md: 150,
-        lg: 150,
-        xl: 150,
+        xs: 210,
+        md: 230,
       },
       display: "flex",
       flexDirection: "column",
     },
     block: {
       justifyContent: "flex-start",
-      alignItems: "flex-start",
+      alignItems: "stretch",
       textAlign: "left",
       flex: "1",
       minWidth: 0,
@@ -60,9 +63,30 @@ const Card = ({
   if (variant === "stat") {
     return (
       <MuiCard elevation={elevation} sx={cardSx} {...props}>
-        <CardContent>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-            {Icon && <Icon color={iconColor} />}
+        <CardContent
+          sx={{
+            height: "100%",
+            p: { xs: 4, md: 5 },
+            "&:last-child": { pb: { xs: 4, md: 5 } },
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 5 }}>
+            {Icon && (
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  display: "grid",
+                  placeItems: "center",
+                  borderRadius: 2,
+                  bgcolor: "action.hover",
+                }}
+              >
+                <Icon color={iconColor} fontSize="small" />
+              </Box>
+            )}
             <Typography
               variant="subtitle1"
               sx={{ fontWeight: 600, color: "text.primary" }}
@@ -70,14 +94,32 @@ const Card = ({
               {title}
             </Typography>
           </Box>
-          <Typography variant="h5" sx={{ textAlign: "end" }}>
+          <Typography
+            sx={{
+              fontSize: { xs: "2rem", md: "2.5rem" },
+              lineHeight: 1,
+              fontWeight: 700,
+              letterSpacing: "-0.035em",
+              color: "text.primary",
+              mb: 3,
+            }}
+          >
             {value}
           </Typography>
+          {description && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: "auto", lineHeight: 1.6 }}
+            >
+              {description}
+            </Typography>
+          )}
         </CardContent>
       </MuiCard>
     );
   }
-  
+
   return (
     <MuiCard
       sx={{
