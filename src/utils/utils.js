@@ -1,5 +1,4 @@
 export function formatHashrate(hashrate) {
-  console.log("Formatting hashrate:", hashrate);
   const units = [
     { value: 1e12, label: "TH/s" },
     { value: 1e9, label: "GH/s" },

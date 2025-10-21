@@ -49,7 +49,7 @@ const Stats = () => {
       icon: Group,
       iconColor: "info",
       title: "Total Users",
-      value: 1,
+      value: poolStats?.total_users || 0,
       gridColumn: {
         xs: "span 15",
         sm: "span 15",
