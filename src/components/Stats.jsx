@@ -1,21 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Speed,
   TrendingUp,
-  AccessTime,
+  TrendingDown,
+  Group,
   ViewQuilt,
-  AttachMoney,
 } from "@mui/icons-material";
 import { stats } from "../utils/mock_data";
 import Card from "./Card";
 
+import { fetchPoolStats } from "../utils/api";
+import { formatHashrate } from "../utils/utils";
+
 const Stats = () => {
+  let [poolStats, setPoolStats] = React.useState(null);
+  useEffect(() => {
+    fetchPoolStats().then((data) => {
+      setPoolStats(data);
+    });
+  }, []);
+
   const statCards = [
     {
       icon: Speed,
       iconColor: "primary",
-      title: "Pool Total Hashrate",
-      value: stats.poolTotalHashrate,
+      title: "Pool Hashrate",
+      value: formatHashrate(poolStats?.total_hashrate || 0),
       gridColumn: {
         xs: "span 7",
         sm: "span 7",
@@ -36,10 +46,10 @@ const Stats = () => {
       },
     },
     {
-      icon: AccessTime,
+      icon: Group,
       iconColor: "info",
-      title: "Avg Block Time",
-      value: stats.avgBlockTime,
+      title: "Total Users",
+      value: 1,
       gridColumn: {
         xs: "span 15",
         sm: "span 15",
@@ -60,10 +70,10 @@ const Stats = () => {
       },
     },
     {
-      icon: AttachMoney,
+      icon: TrendingDown,
       iconColor: "success",
-      title: "Bitcoin Price",
-      value: stats.bitcoinPrice,
+      title: "Rejection Rate",
+      value: `${poolStats?.rejection_rate || 0}%`,
       gridColumn: {
         xs: "span 8",
         sm: "span 8",
