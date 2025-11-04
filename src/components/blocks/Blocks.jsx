@@ -155,11 +155,9 @@ const Blocks = () => {
             <Card
               key={block.id}
               sx={{
-                backgroundColor: block.isPending
-                  ? "primary.light"
-                  : "#000000a3",
-                border: block.isPending ? "2px solid" : "1px solid",
-                borderColor: block.isPending ? "warning.main" : "divider",
+                backgroundColor: block.isPending ? "pending.main" : "#000000a3",
+                border: "1px solid",
+                borderColor: "divider",
               }}
             >
               {isExpanded ? (

@@ -77,7 +77,7 @@ const Card = ({
       </MuiCard>
     );
   }
-  
+
   return (
     <MuiCard
       sx={{

@@ -1,4 +1,4 @@
-export function formatHashrate(hashrate) {
+export function formatHashrate(hashrate, precision = 2) {
   const units = [
     { value: 1e12, label: "TH/s" },
     { value: 1e9, label: "GH/s" },
@@ -9,7 +9,7 @@ export function formatHashrate(hashrate) {
 
   for (const unit of units) {
     if (hashrate >= unit.value) {
-      return (hashrate / unit.value).toFixed(2) + " " + unit.label;
+      return (hashrate / unit.value).toFixed(precision) + " " + unit.label;
     }
   }
 }
