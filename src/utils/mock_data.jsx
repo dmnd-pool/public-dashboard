@@ -122,39 +122,6 @@ export const bitcoinBlocksData = [
   },
 ];
 
-// Generate hourly user/worker data from 1 day ago to now
-const generateChartData = () => {
-  const data = [];
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(now.getDate() - 1);
-  start.setHours(0, 0, 0, 0);
-
-  let users = 45;
-  let workers = 120;
-
-  // generate data points for each hour from start(yesterday 00::00) to now
-  for (
-    let time = new Date(start);
-    time <= now;
-    time.setHours(time.getHours() + 1)
-  ) {
-    users = Math.max(users + (Math.random() * 6 - 3), 25);
-    workers = Math.max(workers + (Math.random() * 10 - 5), 80);
-
-    data.push({
-      date: time.toISOString(),
-      users: Math.round(users),
-      workers: Math.round(workers),
-    });
-  }
-
-  return data;
-};
-
-// Mock data for user and worker machines over time
-export const chartData = generateChartData();
-
 // Helper function to get mining pool colors
 export const getMinerColor = (miner) => {
   const colors = {
@@ -183,4 +150,19 @@ export const stats = {
   lastBlockFound: "867,432",
   poolTotalHashrate: "5 EH/s",
   bitcoinPrice: "$124,405",
+};
+
+export const currentPoolStats = () => {
+  return { total_machines: 150, total_hashrate: 5000000 };
+};
+
+export const poolStatsHistory = () => {
+  const now = Date.now();
+  const fiveMins = 5 * 60 * 1000;
+
+  return [-2, -1, 0].map((i) => ({
+    date: new Date(now + i * fiveMins),
+    total_machines: (150 + i * 2 + Math.random() * 4) | 0,
+    total_hashrate: (5_000_000 + i * 100_000 + Math.random() * 200_000) | 0,
+  }));
 };

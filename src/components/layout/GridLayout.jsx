@@ -4,7 +4,7 @@ const GridLayout = ({ children }) => (
   <Box
     sx={{
       display: "grid",
-      gridTemplateColumns: "repeat(15, 1fr)",
+      gridTemplateColumns: "repeat(18, 1fr)",
       gridTemplateRows: "repeat(6, auto)",
       gap: 2,
       padding: "5%",
