@@ -95,7 +95,12 @@ async function send(text) {
   } catch (err) {
     throw new Error(`Telegram send failed: ${err?.name ?? "error"}`);
   }
-  if (!res.ok) throw new Error(`Telegram send failed: HTTP ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      `Telegram send failed: HTTP ${res.status} ${body?.description ?? ""}`.trim(),
+    );
+  }
 }
 
 async function main() {
