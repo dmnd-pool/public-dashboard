@@ -1,8 +1,9 @@
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8787/api";
 
 // create resusable Get request function
-async function get(endpoint) {
-  return fetch(`${apiUrl}/${endpoint}`, {
+async function get(endpoint, params) {
+  const query = params ? `?${new URLSearchParams(params)}` : "";
+  return fetch(`${apiUrl}/${endpoint}${query}`, {
     method: "GET",
   })
     .then((response) => {
@@ -24,4 +25,8 @@ async function get(endpoint) {
 
 export async function fetchPoolStats() {
   return get(`pool/stats`);
+}
+
+export async function fetchPoolHashrateHistory(timeframe = "1h") {
+  return get("pool/historical", { timeframe });
 }

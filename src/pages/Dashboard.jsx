@@ -1,6 +1,7 @@
 import GridLayout from "../components/layout/GridLayout";
 import Stats from "../components/Stats";
 import Footer from "../components/layout/Footer";
+import Charts from "../components/Charts";
 import { Box, Chip, Typography } from "@mui/material";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
@@ -49,6 +50,7 @@ export default function Dashboard() {
           </Box>
 
           <Stats />
+          <Charts />
         </Box>
       </GridLayout>
       <Footer />
