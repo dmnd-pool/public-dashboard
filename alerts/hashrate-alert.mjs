@@ -63,7 +63,9 @@ async function fetchHashrate() {
     }
     return value;
   } catch (err) {
-    console.error(`Fetch failed: ${err?.name ?? "error"}`);
+    console.error(
+      `Fetch failed: ${err?.name ?? "error"} ${err?.cause?.code ?? err?.cause?.name ?? ""}`.trim(),
+    );
     return null;
   }
 }
