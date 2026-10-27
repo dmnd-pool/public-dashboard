@@ -25,3 +25,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Hashrate alert bot state (kept in Actions cache, never committed)
+alerts/state.json
