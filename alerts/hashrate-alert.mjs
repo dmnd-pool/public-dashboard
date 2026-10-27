@@ -41,7 +41,10 @@ function loadState() {
 async function fetchHashrate() {
   const base = process.env.API_URL;
   if (!base) throw new Error("API_URL is not set");
-  const headers = {};
+  const headers = {
+    Accept: "application/json",
+    "User-Agent": "dmnd-hashrate-alert/1.0",
+  };
   const auth = process.env.API_AUTH_HEADER;
   if (auth) {
     const i = auth.indexOf(":");
